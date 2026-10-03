@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#087f6d">
+<link rel="manifest" href="manifest.json">
+<title>My Hardware Shop</title>
+<style>
+:root{--g:#087f6d;--bg:#f3f7f6;--text:#173333}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans Sinhala",Arial,sans-serif}
+header{background:var(--g);color:#fff;padding:18px 16px calc(18px + env(safe-area-inset-top));position:sticky;top:0;z-index:5}
+h1{margin:0;font-size:23px}.sub{font-size:13px;opacity:.9;margin-top:3px}
+main{max-width:760px;margin:auto;padding:12px 12px 90px}.card{background:#fff;border-radius:17px;padding:14px;margin-bottom:12px;box-shadow:0 2px 12px #0001}
+input{font:inherit}.search,.field{width:100%;padding:12px;border:1px solid #cfdad8;border-radius:11px;background:#fff}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#eef8f5;border-radius:12px;padding:11px;text-align:center}.stat b{display:block;font-size:20px;color:var(--g)}
+.product{border:1px solid #e0e9e7;border-radius:14px;padding:13px;margin:9px 0}.top{display:flex;justify-content:space-between;gap:8px}.name{font-weight:800;font-size:16px}.price{font-size:19px;font-weight:800;color:var(--g);margin-top:4px}.old{font-size:12px;color:#7b8988}.badge{background:#e5f8f1;color:#08735c;border-radius:999px;padding:5px 8px;font-size:12px;font-weight:800;height:max-content}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}button{border:0;border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;font-weight:800}.green{background:var(--g);color:#fff}.gray{background:#e7eeee}.red{background:#ffe3e3;color:#a00000}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #dfe8e6;display:flex;justify-content:center;gap:8px;padding:8px max(8px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom));z-index:6}.nav button{flex:1;max-width:180px;background:#edf3f2}.nav .active{background:#d9f3ec;color:var(--g)}
+.modal{display:none;position:fixed;inset:0;background:#0008;z-index:20;padding:18px;align-items:flex-end}.modal.show{display:flex}.sheet{background:#fff;width:100%;max-width:700px;margin:auto;border-radius:20px;padding:17px}.sheet h2{margin:0 0 5px}.two{display:grid;grid-template-columns:1fr 1fr;gap:9px}.label{font-size:12px;font-weight:800;margin:10px 0 5px}.note{font-size:12px;color:#6b7a79;line-height:1.5}.empty{text-align:center;color:#718080;padding:25px}
+#login{position:fixed;inset:0;background:#087f6d;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}#login.hide{display:none}.loginbox{background:#fff;border-radius:20px;padding:22px;width:min(420px,100%)}.loginbox h2{margin-top:0}
+@media(max-width:420px){.stats{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="login">
+ <div class="loginbox">
+  <h2>🏪 My Hardware Shop</h2>
+  <p class="note">මුලින් Owner PIN එක දාලා app එකට ඇතුල් වෙන්න.</p>
+  <div class="label">PIN</div><input id="pin" class="field" type="password" inputmode="numeric" placeholder="1234">
+  <div class="actions"><button class="green" onclick="login()">Login</button></div>
+  <p class="note">Default PIN: <b>1234</b> — පසුව Settings වලින් වෙනස් කරන්න.</p>
+ </div>
+</div>
+
+<header><h1>🏪 My Hardware Shop</h1><div class="sub">Products • Prices • Discounts • Stock</div></header>
+<main>
+<section id="productsPage">
+ <div class="card">
+  <div class="stats"><div class="stat"><b id="count">0</b>Products</div><div class="stat"><b id="stock">0</b>Stock</div><div class="stat"><b id="discounted">0</b>Discounts</div></div>
+ </div>
+ <div class="card">
+  <input id="search" class="search" placeholder="🔎 භාණ්ඩය හොයන්න..." oninput="renderProducts()">
+  <div class="actions"><button class="green" onclick="openProduct(-1)">＋ Add Product</button></div>
+ </div>
+ <div class="card"><div id="list"></div></div>
+</section>
+
+<section id="settingsPage" style="display:none">
+ <div class="card">
+  <h3 style="margin-top:0">⚙️ Settings</h3>
+  <div class="label">Shop name</div><input id="shopName" class="field">
+  <div class="label">Owner PIN</div><input id="newPin" class="field" type="password" inputmode="numeric">
+  <div class="actions"><button class="green" onclick="saveSettings()">Save Settings</button><button class="gray" onclick="logout()">Logout</button></div>
+ </div>
+ <div class="card note">මේ app එකේ data මේ device එකේ local storage එකේ save වෙනවා. Phone එක මාරු කරනවා නම් backup feature එක පසුව add කරන්න පුළුවන්.</div>
+</section>
+</main>
+
+<div class="nav"><button id="navP" class="active" onclick="showPage('products')">📦 Products</button><button id="navS" onclick="showPage('settings')">⚙️ Settings</button></div>
+
+<div id="modal" class="modal" onclick="if(event.target===this)closeModal()">
+ <div class="sheet">
+  <h2 id="modalTitle">Add Product</h2>
+  <div class="note">භාණ්ඩ තොරතුරු දාලා Save කරන්න.</div>
+  <div class="label">භාණ්ඩ නම</div><input id="fName" class="field" placeholder="උදා: Cement">
+  <div class="two"><div><div class="label">මිල (Rs.)</div><input id="fPrice" class="field" type="number" min="0"></div>
+  <div><div class="label">Discount %</div><input id="fDiscount" class="field" type="number" min="0" max="100"></div></div>
+  <div class="label">Stock</div><input id="fStock" class="field" type="number" min="0">
+  <div class="actions"><button class="green" onclick="saveProduct()">💾 Save</button><button class="gray" onclick="closeModal()">Cancel</button></div>
+ </div>
+</div>
+
+<script>
+const defaults=[
+["භාණ්ඩය 01",0,12,0],["භාණ්ඩය 02",0,15,0],["භාණ්ඩය 03",0,9,0],
+["භාණ්ඩය 04",0,15,0],["භාණ්ඩය 05",0,15,0],["භාණ්ඩය 06",0,8,0],
+["භාණ්ඩය 07",0,7,0],["භාණ්ඩය 08",0,20,0],["භාණ්ඩය 09",0,12,0]];
+let products=JSON.parse(localStorage.getItem("mhs_products")||"null")||JSON.parse(JSON.stringify(defaults));
+let settings=JSON.parse(localStorage.getItem("mhs_settings")||"null")||{name:"My Hardware Shop",pin:"1234"};
+let edit=-1;
+document.querySelector("h1").textContent="🏪 "+settings.name;
+document.getElementById("shopName").value=settings.name;
+document.getElementById("newPin").value=settings.pin;
+
+function money(n){return Number(n||0).toLocaleString("en-LK",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function persist(){localStorage.setItem("mhs_products",JSON.stringify(products))}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function renderProducts(){
+ let q=(document.getElementById("search").value||"").toLowerCase(),box=document.getElementById("list");box.innerHTML="";
+ let totalStock=0,disc=0;
+ products.forEach(p=>{totalStock+=Number(p[3]||0);if(Number(p[2]||0)>0)disc++});
+ document.getElementById("count").textContent=products.length;document.getElementById("stock").textContent=totalStock;document.getElementById("discounted").textContent=disc;
+ let shown=0;
+ products.forEach((p,i)=>{
+  if(q&&!String(p[0]).toLowerCase().includes(q))return;shown++;
+  let final=Number(p[1]||0)*(1-Number(p[2]||0)/100);
+  let d=document.createElement("div");d.className="product";
+  d.innerHTML='<div class="top"><div><div class="name">'+esc(p[0])+'</div><div class="price">Rs. '+money(final)+'</div><div class="old">Original: Rs. '+money(p[1])+' • Stock: '+Number(p[3]||0)+'</div></div><div class="badge">'+Number(p[2]||0)+'% OFF</div></div><div class="actions"><button class="green" onclick="openProduct('+i+')">✏️ Edit</button><button class="red" onclick="delProduct('+i+')">Delete</button></div>';
+  box.appendChild(d);
+ });
+ if(!shown)box.innerHTML='<div class="empty">භාණ්ඩ හම්බුනේ නැහැ.</div>';
+}
+function openProduct(i){edit=i;let p=i<0?["",0,0,0]:products[i];document.getElementById("modalTitle").textContent=i<0?"Add Product":"Edit Product";document.getElementById("fName").value=p[0];document.getElementById("fPrice").value=p[1];document.getElementById("fDiscount").value=p[2];document.getElementById("fStock").value=p[3];document.getElementById("modal").classList.add("show")}
+function closeModal(){document.getElementById("modal").classList.remove("show")}
+function saveProduct(){let n=document.getElementById("fName").value.trim()||"නව භාණ්ඩය",pr=Math.max(0,Number(document.getElementById("fPrice").value)||0),dc=Math.min(100,Math.max(0,Number(document.getElementById("fDiscount").value)||0)),st=Math.max(0,Number(document.getElementById("fStock").value)||0);if(edit<0)products.push([n,pr,dc,st]);else products[edit]=[n,pr,dc,st];persist();closeModal();renderProducts()}
+function delProduct(i){if(confirm("මේ භාණ්ඩය delete කරන්නද?")){products.splice(i,1);persist();renderProducts()}}
+function showPage(p){document.getElementById("productsPage").style.display=p==="products"?"block":"none";document.getElementById("settingsPage").style.display=p==="settings"?"block":"none";document.getElementById("navP").classList.toggle("active",p==="products");document.getElementById("navS").classList.toggle("active",p==="settings")}
+function saveSettings(){settings.name=document.getElementById("shopName").value.trim()||"My Hardware Shop";settings.pin=document.getElementById("newPin").value||"1234";localStorage.setItem("mhs_settings",JSON.stringify(settings));document.querySelector("h1").textContent="🏪 "+settings.name;alert("Settings saved");}
+function login(){if(document.getElementById("pin").value===settings.pin)document.getElementById("login").classList.add("hide");else alert("PIN එක වැරදියි.")}
+function logout(){document.getElementById("login").classList.remove("hide");document.getElementById("pin").value=""}
+document.getElementById("pin").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
+renderProducts();
+</script>
+</body></html>
